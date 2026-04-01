@@ -1,0 +1,67 @@
+# Build and push multi-arch Docker images to GitHub Container Registry (ghcr.io).
+#
+# Triggers:
+#   - Push to main       → tagged as "latest" + commit SHA
+#   - Push tag v1.2.3    → tagged as "1.2.3", "1.2", "1", + commit SHA
+#
+# Images are built for linux/amd64 and linux/arm64 (Apple Silicon).
+#
+# Usage:
+#   docker pull ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer:latest
+#   docker run -d -v ~/.aws:/root/.aws -p 3001:3001 ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer
+
+name: Docker
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # Required to push images to ghcr.io
+    steps:
+      - uses: actions/checkout@v4
+
+      # QEMU enables cross-platform builds (needed for arm64 on amd64 runners)
+      - uses: docker/setup-qemu-action@v3
+
+      # Buildx provides advanced build features (multi-platform, caching)
+      - uses: docker/setup-buildx-action@v3
+
+      # Authenticate with GitHub Container Registry using the built-in GITHUB_TOKEN
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Generate image tags and labels from git metadata:
+      #   - "latest"      only on main branch pushes
+      #   - "<sha>"       always, for pinning exact builds
+      #   - "1.2.3"       full semver from tag
+      #   - "1.2"         major.minor from tag
+      #   - "1"           major only (disabled for v0.x to avoid breaking-change assumptions)
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+
+      # Build and push for both amd64 and arm64, with GitHub Actions layer caching
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
