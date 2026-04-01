@@ -26,21 +26,38 @@ A local web application that uses the AWS SDK to fetch and display CloudWatch lo
 - **Click JSON Value to Add to Filter** — one-click filtering from any value
 - **Search Term Highlighting** — matching text highlighted in log output
 - **Live Tail Mode** — real-time log streaming via Server-Sent Events
+- **AI-Powered Log Analysis** — analyze fetched logs for anomalies using Amazon Bedrock (Claude Haiku 4.5)
+  - Built-in presets: General Anomalies, Error Spikes, Latency Issues, or Custom Prompt
+  - Results shown in a split-pane view with severity-coded anomaly cards
+  - Click an anomaly to highlight the related log entries
+- **SSO Login** — in-app SSO device authorization flow, no need to leave the browser or use the CLI
 - **Saved Filters** — save, update, and restore filter configurations (stored in browser localStorage)
 - **Dark + Light Theme** — toggle with automatic persistence
 
-## Prerequisites
+## Quick Start
 
-- **Node.js** >= 20.19 (or >= 22.12)
-- At least one AWS profile in `~/.aws/credentials` or `~/.aws/config`
-
-Verify your setup:
+Multi-arch Docker images (`linux/amd64` + `linux/arm64`) are published to GitHub Container Registry on every push to `main` and on version tags.
 
 ```bash
-node --version    # v20.19+ or v22.12+
+docker pull ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer:latest
+docker run -d --name aws-cloudwatch-log-viewer -v ~/.aws:/root/.aws -p 3001:3001 ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer
 ```
 
-## Getting Started
+Open **http://localhost:3001** — the container serves both the API and frontend on a single port.
+
+Available tags:
+- `latest` — latest build from `main`
+- `1.2.3` / `1.2` / `1` — specific version (from git tags like `v1.2.3`)
+- `<commit-sha>` — pinned to an exact build
+
+> **Note:** The `~/.aws` directory is mounted read-write so the SSO login flow can cache tokens. If you prefer read-only access, use `-v ~/.aws:/root/.aws:ro` — but you'll need to run `aws sso login` on your host machine when tokens expire.
+
+## Prerequisites
+
+- At least one AWS profile in `~/.aws/credentials` or `~/.aws/config`
+- **For AI analysis:** Access to Amazon Bedrock with Claude Haiku 4.5 enabled in your AWS account
+
+## Development
 
 ### Install dependencies
 
@@ -68,36 +85,12 @@ npm run build
 
 This compiles both the server (TypeScript to `server/dist/`) and the client (Vite to `client/dist/`).
 
-### Docker (pre-built image)
-
-Multi-arch Docker images (`linux/amd64` + `linux/arm64`) are automatically built and published to GitHub Container Registry on every push to `main` and on version tags.
-
-Pull and run:
-
-```bash
-docker pull ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer:latest
-docker run -d --name aws-cloudwatch-log-viewer -v ~/.aws:/root/.aws -p 3001:3001 ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer
-```
-
-Available tags:
-- `latest` — latest build from `main`
-- `1.2.3` / `1.2` / `1` — specific version (from git tags like `v1.2.3`)
-- `<commit-sha>` — pinned to an exact build
-
 ### Docker (build locally)
-
-If you prefer to build the image yourself:
 
 ```bash
 docker build -t aws-cloudwatch-log-viewer .
 docker run -d --name aws-cloudwatch-log-viewer -v ~/.aws:/root/.aws -p 3001:3001 aws-cloudwatch-log-viewer
 ```
-
----
-
-Open **http://localhost:3001**. The container serves both the API and frontend on a single port.
-
-> **Note:** The `~/.aws` directory is mounted read-write so the SSO login flow can cache tokens. If you prefer read-only access, use `-v ~/.aws:/root/.aws:ro` — but you'll need to run `aws sso login` on your host machine when tokens expire.
 
 ## Usage
 
@@ -139,9 +132,13 @@ aws-logs/
 │       │   ├── logs.ts          # GET /api/logs
 │       │   ├── histogram.ts     # GET /api/histogram
 │       │   ├── queryPresets.ts  # GET /api/query-presets
+│       │   ├── sso.ts            # GET /api/sso-sessions, /api/sso-login (SSE)
+│       │   ├── analyze.ts        # POST /api/analyze (Bedrock)
 │       │   └── tail.ts          # GET /api/tail (SSE)
 │       └── utils/
-│           └── aws-client.ts  # AWS SDK v3 client factory with caching
+│           ├── aws-client.ts     # AWS SDK v3 client factory with caching
+│           ├── analysis-presets.ts # LLM analysis preset prompts
+│           └── insights-filter.ts # CloudWatch Insights filter translation
 ├── client/
 │   ├── package.json
 │   ├── vite.config.ts
@@ -149,10 +146,12 @@ aws-logs/
 │       ├── App.tsx
 │       ├── main.tsx
 │       ├── components/
-│       │   ├── Toolbar/      # Profile, log group, stream, time, filter, presets selectors
+│       │   ├── Toolbar/      # Profile, log group, stream, time, filter, presets, analyze
 │       │   ├── Histogram/    # Log distribution chart with zoom and legend
 │       │   ├── LogViewer/    # Virtualized log table, JSON viewer, column chips
+│       │   ├── AnomalyView/  # AI analysis results: anomaly cards + detail view
 │       │   ├── SavedFilters.tsx
+│       │   ├── ToastContainer.tsx
 │       │   └── ThemeToggle.tsx
 │       ├── hooks/            # useLiveTail
 │       ├── stores/           # Zustand state management
@@ -168,7 +167,7 @@ aws-logs/
 | State     | Zustand 5                           |
 | Scrolling | @tanstack/react-virtual 3           |
 | Backend   | Express 5, TypeScript               |
-| AWS       | AWS SDK v3 (CloudWatch Logs, EC2)       |
+| AWS       | AWS SDK v3 (CloudWatch Logs, EC2, Bedrock Runtime, SSO OIDC) |
 
 ## API Endpoints
 
@@ -182,6 +181,9 @@ aws-logs/
 | `GET /api/histogram?profile&region&logGroups&startTime&endTime&buckets&filterPattern` | Log distribution histogram via Insights |
 | `GET /api/query-presets` | List available query preset templates |
 | `GET /api/tail?profile&region&logGroups&filterPattern` | SSE stream for live tail |
+| `POST /api/analyze` | Analyze logs for anomalies via Amazon Bedrock |
+| `GET /api/sso-sessions` | List SSO sessions and their login status |
+| `GET /api/sso-login?sessionName=X` | SSE-based SSO device authorization flow |
 
 ## License
 
