@@ -40,7 +40,7 @@ Multi-arch Docker images (`linux/amd64` + `linux/arm64`) are published to GitHub
 
 ```bash
 docker pull ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer:latest
-docker run -d --name aws-cloudwatch-log-viewer -v ~/.aws:/root/.aws -p 3001:3001 ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer
+docker run -d --name non-sucking-aws-cloudwatch-log-viewer -v ~/.aws:/root/.aws -p 3001:3001 ghcr.io/seschulz/non-sucking-aws-cloudwatch-log-viewer
 ```
 
 Open **http://localhost:3001** — the container serves both the API and frontend on a single port.
@@ -88,8 +88,8 @@ This compiles both the server (TypeScript to `server/dist/`) and the client (Vit
 ### Docker (build locally)
 
 ```bash
-docker build -t aws-cloudwatch-log-viewer .
-docker run -d --name aws-cloudwatch-log-viewer -v ~/.aws:/root/.aws -p 3001:3001 aws-cloudwatch-log-viewer
+docker build -t non-sucking-aws-cloudwatch-log-viewer .
+docker run -d --name non-sucking-aws-cloudwatch-log-viewer -v ~/.aws:/root/.aws -p 3001:3001 non-sucking-aws-cloudwatch-log-viewer
 ```
 
 ## Usage
