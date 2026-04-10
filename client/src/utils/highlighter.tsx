@@ -22,7 +22,7 @@ export function highlightMatches(
       return (
         <mark
           key={i}
-          className="bg-warning/30 text-warning-content rounded-sm px-0.5"
+          className="rounded-sm bg-amber-300/60 px-0.5 text-amber-950 ring-1 ring-amber-500/30 dark:bg-yellow-300/75 dark:text-zinc-950 dark:ring-yellow-200/50"
         >
           {part}
         </mark>
