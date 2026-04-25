@@ -38,22 +38,22 @@ const LEVELS: Record<string, LogLevelInfo> = {
   },
   DEBUG: {
     level: "DEBUG",
-    badgeClass: "bg-neutral/10 text-base-content/50",
-    borderClass: "border-neutral/30",
+    badgeClass: "bg-base-content/10 text-base-content/75",
+    borderClass: "border-base-content/25",
     rowTintClass: "",
   },
   TRACE: {
     level: "TRACE",
-    badgeClass: "bg-neutral/10 text-base-content/50",
-    borderClass: "border-neutral/30",
+    badgeClass: "bg-base-content/10 text-base-content/75",
+    borderClass: "border-base-content/25",
     rowTintClass: "",
   },
 };
 
 const DEFAULT_LEVEL: LogLevelInfo = {
   level: "UNKNOWN",
-  badgeClass: "bg-neutral/10 text-base-content/50",
-  borderClass: "border-neutral",
+  badgeClass: "bg-base-content/12 text-base-content/70",
+  borderClass: "border-base-content/30",
   rowTintClass: "",
 };
 
