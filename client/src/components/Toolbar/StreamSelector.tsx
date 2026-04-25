@@ -10,6 +10,7 @@ export default function StreamSelector() {
   const profile = useLogStore((s) => s.profile);
   const region = useLogStore((s) => s.region);
   const selectedLogGroups = useLogStore((s) => s.selectedLogGroups);
+  const availableLogGroups = useLogStore((s) => s.availableLogGroups);
   const selectedStreams = useLogStore((s) => s.selectedStreams);
   const addStream = useLogStore((s) => s.addStream);
   const removeStream = useLogStore((s) => s.removeStream);
@@ -25,14 +26,18 @@ export default function StreamSelector() {
 
   // Fetch streams whenever log groups change
   const fetchStreams = useCallback(async () => {
-    if (!profile || !region || selectedLogGroups.length === 0) {
+    const activeLogGroups = availableLogGroups.length
+      ? selectedLogGroups.filter((group) => availableLogGroups.includes(group))
+      : selectedLogGroups;
+
+    if (!profile || !region || activeLogGroups.length === 0) {
       setAllStreams([]);
       return;
     }
     setLoading(true);
     try {
       // Fetch streams for each selected log group in parallel
-      const fetches = selectedLogGroups.map(async (logGroup) => {
+      const fetches = activeLogGroups.map(async (logGroup) => {
         const params = new URLSearchParams({ profile, region, logGroup });
         const res = await fetch(`/api/log-streams?${params.toString()}`);
         if (!res.ok) return [];
@@ -54,7 +59,7 @@ export default function StreamSelector() {
     } finally {
       setLoading(false);
     }
-  }, [profile, region, selectedLogGroups]);
+  }, [availableLogGroups, profile, region, selectedLogGroups]);
 
   useEffect(() => {
     fetchStreams();
@@ -110,7 +115,7 @@ export default function StreamSelector() {
   const disabled = !profile || !region || selectedLogGroups.length === 0;
 
   return (
-    <div className="relative min-w-[220px] flex-1" ref={dropdownRef}>
+    <div className="relative w-full min-w-0" ref={dropdownRef}>
       <div
         className={`flex flex-wrap items-center gap-1 rounded-lg border px-2 py-1 transition-colors bg-base-100 ${
           disabled

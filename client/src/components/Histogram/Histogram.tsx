@@ -1,24 +1,17 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useLogStore, type HistogramBucket } from "../../stores/logStore";
 
-const LEVEL_FILL_CLASS: Record<string, string> = {
-  ERROR: "fill-error",
-  WARN: "fill-warning",
-  INFO: "fill-info",
-  DEBUG: "fill-neutral",
-  OTHER: "fill-neutral",
-};
-
-const LEVEL_BG_CLASS: Record<string, string> = {
-  ERROR: "bg-error",
-  WARN: "bg-warning",
-  INFO: "bg-info",
-  DEBUG: "bg-neutral/80",
-  OTHER: "bg-neutral",
+const LEVEL_COLOR: Record<string, { dark: string; light: string }> = {
+  ERROR: { dark: "#f43f5e", light: "#e11d48" },
+  WARN: { dark: "#f59e0b", light: "#d97706" },
+  INFO: { dark: "#38bdf8", light: "#0284c7" },
+  DEBUG: { dark: "#94a3b8", light: "#64748b" },
+  OTHER: { dark: "#cbd5e1", light: "#94a3b8" },
 };
 
 const LEVEL_FILL_OPACITY: Record<string, number> = {
-  DEBUG: 0.2,
+  DEBUG: 0.58,
+  OTHER: 0.48,
 };
 
 const STACK_ORDER = ["ERROR", "WARN", "INFO", "DEBUG", "OTHER"] as const;
@@ -321,12 +314,12 @@ export default function Histogram({ height }: { height?: number }) {
                 return (
                   <rect
                     key={level}
-                    className={LEVEL_FILL_CLASS[level]}
                     x={x}
                     y={y}
                     width={barWidth}
                     height={bh}
                     rx={1}
+                    fill={LEVEL_COLOR[level][isDark ? "dark" : "light"]}
                     fillOpacity={LEVEL_FILL_OPACITY[level] ?? 1}
                   />
                 );
@@ -402,7 +395,8 @@ export default function Histogram({ height }: { height?: number }) {
             return (
               <div key={level} className="flex items-center gap-1.5">
                 <span
-                  className={`inline-block h-2 w-2 rounded-sm ${LEVEL_BG_CLASS[level]}`}
+                  className="inline-block h-2 w-2 rounded-sm"
+                  style={{ backgroundColor: LEVEL_COLOR[level][isDark ? "dark" : "light"] }}
                 />
                 <span className="text-base-content/50">{level}:</span>
                 <span className="text-base-content">{count}</span>
@@ -432,7 +426,8 @@ export default function Histogram({ height }: { height?: number }) {
           return (
             <span key={level} className="flex items-center gap-1">
               <span
-                className={`inline-block h-2 w-2 rounded-sm ${LEVEL_BG_CLASS[level]}`}
+                className="inline-block h-2 w-2 rounded-sm"
+                style={{ backgroundColor: LEVEL_COLOR[level][isDark ? "dark" : "light"] }}
               />
               {level}: {total.toLocaleString()}
             </span>

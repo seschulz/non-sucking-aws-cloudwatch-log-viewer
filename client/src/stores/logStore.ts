@@ -46,6 +46,7 @@ export interface LogState {
   regions: string[];
   selectedLogGroups: string[];
   selectedStreams: string[];
+  availableLogGroups: string[];
   filterPattern: string;
   timeRange: TimeRange;
   logEvents: LogEvent[];
@@ -88,6 +89,7 @@ export interface LogState {
   setRegion: (r: string) => void;
   addLogGroup: (g: string) => void;
   removeLogGroup: (g: string) => void;
+  setAvailableLogGroups: (groups: string[]) => void;
   addStream: (s: string) => void;
   removeStream: (s: string) => void;
   setFilterPattern: (f: string) => void;
@@ -121,12 +123,20 @@ function resolveRelativeTime(value: string): number {
   return Date.now() - num * (multipliers[unit] || 60 * 1000);
 }
 
+function getActiveLogGroups(state: Pick<LogState, "selectedLogGroups" | "availableLogGroups">): string[] {
+  if (state.availableLogGroups.length === 0) {
+    return state.selectedLogGroups;
+  }
+  return state.selectedLogGroups.filter((group) => state.availableLogGroups.includes(group));
+}
+
 function buildQueryParams(state: LogState): URLSearchParams {
   const params = new URLSearchParams();
+  const activeLogGroups = getActiveLogGroups(state);
   if (state.profile) params.set("profile", state.profile);
   if (state.region) params.set("region", state.region);
-  if (state.selectedLogGroups.length) {
-    params.set("logGroups", state.selectedLogGroups.join(","));
+  if (activeLogGroups.length) {
+    params.set("logGroups", activeLogGroups.join(","));
   }
 
   if (state.timeRange.type === "relative") {
@@ -190,6 +200,7 @@ export const useLogStore = create<LogState>((set, get) => ({
   regions: [],
   selectedLogGroups: [],
   selectedStreams: [],
+  availableLogGroups: [],
   filterPattern: "",
   timeRange: { type: "relative", value: "15m" },
   logEvents: [],
@@ -238,7 +249,7 @@ export const useLogStore = create<LogState>((set, get) => ({
       profile: p,
       region: defaultRegion,
       regions: [],
-      selectedStreams: [],
+      availableLogGroups: [],
       logEvents: [],
       nextToken: null,
       analysisResult: null,
@@ -250,7 +261,7 @@ export const useLogStore = create<LogState>((set, get) => ({
   setRegion: (r) => {
     set({
       region: r,
-      selectedStreams: [],
+      availableLogGroups: [],
       logEvents: [],
       nextToken: null,
       analysisResult: null,
@@ -274,6 +285,8 @@ export const useLogStore = create<LogState>((set, get) => ({
     });
   },
 
+  setAvailableLogGroups: (groups) => set({ availableLogGroups: groups }),
+
   addStream: (s) => {
     const { selectedStreams } = get();
     if (!selectedStreams.includes(s)) {
@@ -294,6 +307,11 @@ export const useLogStore = create<LogState>((set, get) => ({
     const state = get();
     if (!state.profile || !state.region || !state.selectedLogGroups.length) {
       useToastStore.getState().addToast("Select a profile, region, and at least one log group.");
+      return;
+    }
+    const activeLogGroups = getActiveLogGroups(state);
+    if (!activeLogGroups.length) {
+      useToastStore.getState().addToast("None of the selected log groups exist in this profile/region.");
       return;
     }
 
@@ -430,7 +448,7 @@ export const useLogStore = create<LogState>((set, get) => ({
 
   fetchHistogram: async (containerWidth = 600) => {
     const state = get();
-    if (!state.profile || !state.region || !state.selectedLogGroups.length) return;
+    if (!state.profile || !state.region || !getActiveLogGroups(state).length) return;
 
     const numBuckets = Math.max(10, Math.min(200, Math.round(containerWidth / 12)));
     set({ isHistogramLoading: true, histogramError: null });

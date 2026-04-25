@@ -8,6 +8,7 @@ export function useLiveTail() {
   const profile = useLogStore((s) => s.profile);
   const region = useLogStore((s) => s.region);
   const selectedLogGroups = useLogStore((s) => s.selectedLogGroups);
+  const availableLogGroups = useLogStore((s) => s.availableLogGroups);
   const filterPattern = useLogStore((s) => s.filterPattern);
   const addLogEvents = useLogStore((s) => s.addLogEvents);
 
@@ -23,12 +24,16 @@ export function useLiveTail() {
     // Close any existing connection
     stop();
 
-    if (!profile || !region || !selectedLogGroups.length) return;
+    const activeLogGroups = availableLogGroups.length
+      ? selectedLogGroups.filter((group) => availableLogGroups.includes(group))
+      : selectedLogGroups;
+
+    if (!profile || !region || !activeLogGroups.length) return;
 
     const params = new URLSearchParams();
     params.set("profile", profile);
     params.set("region", region);
-    params.set("logGroups", selectedLogGroups.join(","));
+    params.set("logGroups", activeLogGroups.join(","));
     if (filterPattern) params.set("filterPattern", filterPattern);
 
     const es = new EventSource(`/api/tail?${params.toString()}`);
@@ -56,7 +61,7 @@ export function useLiveTail() {
         eventSourceRef.current = null;
       }
     };
-  }, [profile, region, selectedLogGroups, filterPattern, addLogEvents, stop]);
+  }, [profile, region, selectedLogGroups, availableLogGroups, filterPattern, addLogEvents, stop]);
 
   // Cleanup on unmount
   useEffect(() => {

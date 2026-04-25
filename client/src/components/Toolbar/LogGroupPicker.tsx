@@ -15,12 +15,42 @@ function readStarred(): Set<string> {
   return new Set();
 }
 
+function getGroupSuffix(group: string): string {
+  const parts = group.split("/");
+  return parts[parts.length - 1] || group;
+}
+
+function reconcileSelectedGroups(selectedGroups: string[], availableGroups: string[]): string[] {
+  const availableSet = new Set(availableGroups);
+  const nextGroups: string[] = [];
+
+  for (const group of selectedGroups) {
+    if (availableSet.has(group)) {
+      nextGroups.push(group);
+      continue;
+    }
+
+    const suffix = getGroupSuffix(group);
+    const matches = availableGroups.filter((candidate) => getGroupSuffix(candidate) === suffix);
+
+    if (matches.length === 1) {
+      nextGroups.push(matches[0]);
+      continue;
+    }
+
+    nextGroups.push(group);
+  }
+
+  return [...new Set(nextGroups)];
+}
+
 export default function LogGroupPicker() {
   const profile = useLogStore((s) => s.profile);
   const region = useLogStore((s) => s.region);
   const selectedLogGroups = useLogStore((s) => s.selectedLogGroups);
   const addLogGroup = useLogStore((s) => s.addLogGroup);
   const removeLogGroup = useLogStore((s) => s.removeLogGroup);
+  const setAvailableLogGroups = useLogStore((s) => s.setAvailableLogGroups);
 
   const [inputValue, setInputValue] = useState("");
   const [allGroups, setAllGroups] = useState<string[]>([]);
@@ -52,6 +82,7 @@ export default function LogGroupPicker() {
   const fetchAllGroups = useCallback(async () => {
     if (!profile || !region) {
       setAllGroups([]);
+      setAvailableLogGroups([]);
       return;
     }
     setIsLoading(true);
@@ -71,20 +102,20 @@ export default function LogGroupPicker() {
         nextToken = data.nextToken;
       } while (nextToken);
       setAllGroups(groups);
-      // Prune selected log groups that no longer exist in this profile/region
-      const groupSet = new Set(groups);
+      setAvailableLogGroups(groups);
       const current = useLogStore.getState().selectedLogGroups;
-      const valid = current.filter((g) => groupSet.has(g));
-      if (valid.length !== current.length) {
-        useLogStore.setState({ selectedLogGroups: valid, selectedStreams: [] });
+      const reconciled = reconcileSelectedGroups(current, groups);
+      if (reconciled.length !== current.length || reconciled.some((group, index) => group !== current[index])) {
+        useLogStore.setState({ selectedLogGroups: reconciled });
       }
     } catch (err: any) {
       setAllGroups([]);
+      setAvailableLogGroups([]);
       addToast(err.message || "Failed to load log groups");
     } finally {
       setIsLoading(false);
     }
-  }, [profile, region]);
+  }, [addToast, profile, region, setAvailableLogGroups]);
 
   useEffect(() => {
     fetchAllGroups();
@@ -151,7 +182,7 @@ export default function LogGroupPicker() {
   const disabled = !profile || !region;
 
   return (
-    <div className="relative min-w-[280px] flex-1" ref={dropdownRef}>
+    <div className="relative w-full min-w-0" ref={dropdownRef}>
       <div
         className={`flex flex-wrap items-center gap-1 rounded-lg border px-2 py-1 transition-colors bg-base-100 ${
           disabled
