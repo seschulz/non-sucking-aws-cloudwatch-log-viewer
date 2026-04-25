@@ -50,7 +50,7 @@ export default function Toolbar() {
       {/* Controls area */}
       <div className="bg-base-200 px-4 py-2.5">
         {/* Row 1: Grouped selectors */}
-        <div className="flex flex-wrap items-end gap-4 mb-3.5">
+        <div className="mb-3.5 flex flex-wrap items-start gap-4">
           {/* Profile group */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-base-content/30">AWS Profile</span>
@@ -64,16 +64,16 @@ export default function Toolbar() {
           </div>
 
           {/* Separator */}
-          <div className="hidden sm:block h-7 w-px bg-base-content/20 self-end mb-0.5" />
+          <div className="mt-6 hidden self-stretch sm:block w-px bg-base-content/20" />
 
           {/* Log Groups group */}
-          <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+          <div className="flex min-w-0 flex-[1.1_1_280px] flex-col gap-1">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-base-content/30">Log Groups</span>
             <LogGroupPicker />
           </div>
 
           {/* Log Streams group */}
-          <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
+          <div className="flex min-w-0 flex-[1_1_240px] flex-col gap-1">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-base-content/30">Log Streams</span>
             <StreamSelector />
           </div>
