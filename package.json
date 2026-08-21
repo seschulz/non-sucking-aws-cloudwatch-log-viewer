@@ -7,6 +7,6 @@
     "build": "npm run build -w server && npm run build -w client"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^10.0.5"
   }
 }
