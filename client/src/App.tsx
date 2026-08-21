@@ -7,6 +7,9 @@ import ToastContainer from "./components/ToastContainer";
 import { useResizable } from "./hooks/useResizable";
 import AnomalyView from "./components/AnomalyView/AnomalyView";
 
+// Height of the drag area between the histogram and the log table
+const HISTOGRAM_HANDLE_HEIGHT = 12;
+
 export default function App() {
   const theme = useLogStore((s) => s.theme);
   const histogramData = useLogStore((s) => s.histogramData);
@@ -21,9 +24,17 @@ export default function App() {
   const nextToken = useLogStore((s) => s.nextToken);
   const queryTime = useLogStore((s) => s.queryTime);
   const isTailing = useLogStore((s) => s.isTailing);
-  const showHistogramPanel = isHistogramLoading || histogramError || (histogramData && histogramData.length > 0);
+  const hasSearched = useLogStore((s) => s.hasSearched);
+  // Once a search has run, keep the histogram slot reserved for the rest of the
+  // session so the log table never shifts when data arrives, errors, or comes
+  // back empty. Only the very first appearance moves anything, and that animates.
+  const showHistogramPanel =
+    hasSearched ||
+    isHistogramLoading ||
+    !!histogramError ||
+    !!(histogramData && histogramData.length > 0);
 
-  const { size: histogramHeight, handleMouseDown: onHistogramResize } = useResizable({
+  const { size: histogramHeight, handleMouseDown: onHistogramResize, isResizing } = useResizable({
     storageKey: "aws-logs:histogram-height",
     defaultSize: 140,
     min: 60,
@@ -41,24 +52,31 @@ export default function App() {
       className="flex min-h-screen flex-col bg-base-100 text-base-content"
     >
       <Toolbar />
-      <div className="flex flex-1 flex-col gap-3 p-3">
-        {showHistogramPanel && (
-          <>
-            <div
-              className="rounded-lg border border-base-300 bg-base-200/40 overflow-hidden"
-              style={{ height: histogramHeight }}
-            >
-              <Histogram height={histogramHeight} />
-            </div>
-            {/* Histogram resize handle */}
-            <div
-              className="group flex items-center justify-center h-2 -mt-1.5 -mb-1.5 cursor-row-resize z-10"
-              onMouseDown={onHistogramResize}
-            >
-              <div className="h-[3px] w-10 rounded-full bg-accent/0 group-hover:bg-accent/60 transition-colors" />
-            </div>
-          </>
-        )}
+      <div className="flex flex-1 flex-col p-3">
+        {/* Histogram slot — collapses to zero height instead of unmounting, so
+            showing/hiding it slides rather than snapping the table up or down */}
+        <div
+          className="shrink-0 overflow-hidden"
+          style={{
+            height: showHistogramPanel ? histogramHeight + HISTOGRAM_HANDLE_HEIGHT : 0,
+            transition: isResizing ? undefined : "height 200ms ease-out",
+          }}
+        >
+          <div
+            className="rounded-lg border border-base-300 bg-base-200/40 overflow-hidden"
+            style={{ height: histogramHeight }}
+          >
+            <Histogram height={histogramHeight} />
+          </div>
+          {/* Histogram resize handle */}
+          <div
+            className="group flex items-center justify-center cursor-row-resize z-10"
+            style={{ height: HISTOGRAM_HANDLE_HEIGHT }}
+            onMouseDown={onHistogramResize}
+          >
+            <div className="h-[3px] w-10 rounded-full bg-accent/0 group-hover:bg-accent/60 transition-colors" />
+          </div>
+        </div>
         <div className="flex flex-1 flex-col rounded-lg border border-base-300 bg-base-200/40 overflow-hidden">
           {isAnalyzing ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3">

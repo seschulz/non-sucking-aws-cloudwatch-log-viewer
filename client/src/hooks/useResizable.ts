@@ -23,6 +23,7 @@ function getInitialSize(storageKey: string, defaultSize: number, min: number, ma
 
 export function useResizable({ storageKey, defaultSize, min, max, direction }: UseResizableOptions) {
   const [size, setSizeState] = useState(() => getInitialSize(storageKey, defaultSize, min, max));
+  const [isResizing, setIsResizing] = useState(false);
   const sizeRef = useRef(size);
 
   const setSize = useCallback(
@@ -51,6 +52,7 @@ export function useResizable({ storageKey, defaultSize, min, max, direction }: U
         document.removeEventListener("mouseup", handleMouseUp);
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        setIsResizing(false);
         try {
           localStorage.setItem(storageKey, String(sizeRef.current));
         } catch {
@@ -58,6 +60,7 @@ export function useResizable({ storageKey, defaultSize, min, max, direction }: U
         }
       };
 
+      setIsResizing(true);
       document.body.style.cursor = direction === "vertical" ? "row-resize" : "col-resize";
       document.body.style.userSelect = "none";
       document.addEventListener("mousemove", handleMouseMove);
@@ -66,5 +69,5 @@ export function useResizable({ storageKey, defaultSize, min, max, direction }: U
     [direction, storageKey, setSize],
   );
 
-  return { size, handleMouseDown };
+  return { size, handleMouseDown, isResizing };
 }

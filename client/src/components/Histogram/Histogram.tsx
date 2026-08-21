@@ -207,24 +207,25 @@ export default function Histogram({ height }: { height?: number }) {
       )
     : 0;
 
-  // Early returns AFTER all hooks
+  // Early returns AFTER all hooks. These fill the reserved slot height so the
+  // panel keeps its size while loading, on error, and when there is no data.
+  // Note: containerRef stays off these placeholders — the ResizeObserver should
+  // only measure the real chart.
   if (!buckets || buckets.length === 0) {
-    if (isLoading) {
-      return (
-        <div className="border-b border-base-300 bg-base-200/50 px-3 py-6 flex items-center justify-center">
-          <span className="loading loading-spinner loading-sm" />
-          <span className="ml-2 text-sm text-base-content/40">Updating...</span>
-        </div>
-      );
-    }
-    if (histogramError) {
-      return (
-        <div className="border-b border-base-300 bg-base-200/50 px-3 py-2">
+    return (
+      <div className="flex h-full items-center justify-center bg-base-200/50 px-3 text-center">
+        {isLoading ? (
+          <>
+            <span className="loading loading-spinner loading-sm" />
+            <span className="ml-2 text-sm text-base-content/40">Updating...</span>
+          </>
+        ) : histogramError ? (
           <span className="text-xs text-error">Histogram: {histogramError}</span>
-        </div>
-      );
-    }
-    return null;
+        ) : (
+          <span className="text-xs text-base-content/40">No log distribution for this range</span>
+        )}
+      </div>
+    );
   }
 
   return (
