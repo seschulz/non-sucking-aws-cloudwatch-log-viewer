@@ -14,12 +14,20 @@ interface HistogramBucket {
   counts: Record<Level, number>;
 }
 
-function formatInsightsInterval(ms: number): string {
-  const seconds = Math.max(1, Math.round(ms / 1000));
-  if (seconds >= 86400 && seconds % 86400 === 0) return `${seconds / 86400}d`;
-  if (seconds >= 3600 && seconds % 3600 === 0) return `${seconds / 3600}h`;
-  if (seconds >= 60 && seconds % 60 === 0) return `${seconds / 60}m`;
-  return `${seconds}s`;
+export function formatInsightsInterval(ms: number): string {
+  const units = [
+    { suffix: "s", milliseconds: 1_000, maximum: 60 },
+    { suffix: "m", milliseconds: 60_000, maximum: 60 },
+    { suffix: "h", milliseconds: 3_600_000, maximum: 24 },
+    { suffix: "d", milliseconds: 86_400_000, maximum: 7 },
+  ] as const;
+
+  for (const unit of units) {
+    const value = Math.max(1, Math.round(ms / unit.milliseconds));
+    if (value <= unit.maximum) return `${value}${unit.suffix}`;
+  }
+
+  return `${Math.max(1, Math.round(ms / 604_800_000))}w`;
 }
 
 function sleep(ms: number): Promise<void> {

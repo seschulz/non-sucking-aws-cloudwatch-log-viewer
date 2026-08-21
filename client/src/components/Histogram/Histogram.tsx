@@ -18,6 +18,8 @@ const STACK_ORDER = ["ERROR", "WARN", "INFO", "DEBUG", "OTHER"] as const;
 
 const MARGIN = { top: 4, right: 8, bottom: 28, left: 40 };
 const BAR_GAP = 1;
+const HOVER_LABEL_WIDTH = 96;
+const HOVER_LABEL_HEIGHT = 18;
 
 function formatTime(ms: number): string {
   const d = new Date(ms);
@@ -195,6 +197,15 @@ export default function Histogram({ height }: { height?: number }) {
   const selectionW = dragStart !== null && dragEnd !== null ? Math.abs(dragEnd - dragStart) : 0;
 
   const isDark = theme === "dark";
+  const hoverLabel = tooltip
+    ? formatTime(tooltip.bucket.start + (tooltip.bucket.end - tooltip.bucket.start) / 2)
+    : "";
+  const hoverLabelX = tooltip
+    ? Math.max(
+        MARGIN.left,
+        Math.min(tooltip.x - HOVER_LABEL_WIDTH / 2, width - MARGIN.right - HOVER_LABEL_WIDTH),
+      )
+    : 0;
 
   // Early returns AFTER all hooks
   if (!buckets || buckets.length === 0) {
@@ -363,17 +374,38 @@ export default function Histogram({ height }: { height?: number }) {
           />
         )}
 
-        {/* Tooltip vertical line */}
+        {/* Hover line and timestamp */}
         {tooltip && dragStart === null && (
-          <line
-            x1={tooltip.x}
-            y1={MARGIN.top}
-            x2={tooltip.x}
-            y2={MARGIN.top + chartHeight}
-            stroke={isDark ? "#555" : "#ccc"}
-            strokeWidth={1}
-            strokeDasharray="2,2"
-          />
+          <g pointerEvents="none">
+            <line
+              x1={tooltip.x}
+              y1={MARGIN.top}
+              x2={tooltip.x}
+              y2={MARGIN.top + chartHeight}
+              stroke={isDark ? "#737373" : "#a3a3a3"}
+              strokeWidth={1}
+              strokeDasharray="2,2"
+            />
+            <rect
+              x={hoverLabelX}
+              y={MARGIN.top}
+              width={HOVER_LABEL_WIDTH}
+              height={HOVER_LABEL_HEIGHT}
+              rx={3}
+              fill={isDark ? "#171717" : "#ffffff"}
+              stroke={isDark ? "#404040" : "#d4d4d4"}
+            />
+            <text
+              x={hoverLabelX + HOVER_LABEL_WIDTH / 2}
+              y={MARGIN.top + 12}
+              textAnchor="middle"
+              fill={isDark ? "#e5e5e5" : "#404040"}
+              fontSize={9}
+              fontWeight={500}
+            >
+              {hoverLabel}
+            </text>
+          </g>
         )}
       </svg>
 

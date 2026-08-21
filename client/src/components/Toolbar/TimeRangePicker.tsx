@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { useLogStore, type TimeRange } from "../../stores/logStore";
+import { useLogStore } from "../../stores/logStore";
 
 const PRESETS = [
   { label: "5m", value: "5m" },
   { label: "15m", value: "15m" },
   { label: "1h", value: "1h" },
+  { label: "3h", value: "3h" },
   { label: "6h", value: "6h" },
+  { label: "12h", value: "12h" },
   { label: "24h", value: "24h" },
   { label: "3d", value: "3d" },
   { label: "7d", value: "7d" },
@@ -14,6 +16,7 @@ const PRESETS = [
 export default function TimeRangePicker() {
   const timeRange = useLogStore((s) => s.timeRange);
   const setTimeRange = useLogStore((s) => s.setTimeRange);
+  const fetchLogs = useLogStore((s) => s.fetchLogs);
 
   const [selectValue, setSelectValue] = useState(
     timeRange.type === "relative" ? timeRange.value : "custom",
@@ -44,6 +47,7 @@ export default function TimeRangePicker() {
     setSelectValue(value);
     if (value !== "custom") {
       setTimeRange({ type: "relative", value });
+      void fetchLogs();
     }
   };
 
@@ -53,6 +57,7 @@ export default function TimeRangePicker() {
       const end = new Date(customEnd).getTime();
       if (!isNaN(start) && !isNaN(end) && start < end) {
         setTimeRange({ type: "absolute", start, end });
+        void fetchLogs();
       }
     }
   };
